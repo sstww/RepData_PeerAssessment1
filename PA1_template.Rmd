@@ -8,18 +8,107 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r, echo=TRUE, cache=TRUE}
+unzip("activity.zip")
+act<-read.csv("activity.csv", header=TRUE, na.strings="NA")
 
-
+library (lubridate) 
+act$date<-ymd(act$date)
+summary(act)
+```
 ## What is mean total number of steps taken per day?
-
+```{r, echo=TRUE, cache=TRUE}
+library(dplyr)
+act1<-act %>%
+  group_by(date) %>%
+  summarise(sum_steps=sum(steps, na.rm=TRUE))
+mean_act1<-mean(act1$sum_steps, na.rm=TRUE)  
+median_act1<-median(act1$sum_steps, na.rm=TRUE)  
+hist(act1$sum_steps,
+                main = "Histogram of Total Steps Taken by Day",
+                xlab = "Total Steps per Day")
+mean_act1
+median_act1
+```
 
 
 ## What is the average daily activity pattern?
+```{r, echo=TRUE, cache=TRUE}
+act2<-act %>%
+  group_by(interval) %>%
+  summarise(ave_interval_steps=mean(steps, na.rm=TRUE))
 
+plot(act2$interval, act2$ave_interval_steps, type="l",
+      main = "Aveage Steps by Interval for All Days",
+      xlab="Intervals",
+      ylab = "Average Steps" )
+
+max_steps<-act2[act2$ave_interval_steps==max(act2$ave_interval_steps), ]
+
+max_steps
+
+```
 
 
 ## Imputing missing values
 
+1.Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r, echo=TRUE, cache=TRUE}
+total_missing<-length(is.na(act$steps))
+total_missing
+```
+2.use the mean for that 5-minute interval to fill in all of the missing values in the dataset. 
 
+```{r, echo=TRUE, cache=TRUE}
+library(dplyr)
+act3<-inner_join(act, act2)
+act3$ave_interval_steps<-round(act3$ave_interval_steps, digits=0)
+act3$ave_interval_steps<-as.integer(act3$ave_interval_steps)
+act3$steps[is.na(act3$steps)==T] <- act3$ave_interval_steps[is.na(act3$steps)==T]
+```
+3.Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r, echo=TRUE, cache=TRUE}
+act4<-act3[, (1:3)]
+```
+4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+```{r, echo=TRUE, cache=TRUE}
+library(dplyr)
+act5<-act4 %>%
+  group_by(date) %>%
+  summarise(sum_steps=sum(steps, na.rm=TRUE))
+mean_act5<-mean(act1$sum_steps, na.rm=TRUE)  
+median_act5<-median(act1$sum_steps, na.rm=TRUE)  
+hist(act5$sum_steps,
+                main = "Histogram of Total Steps Taken by Day",
+                xlab = "Total Steps per Day")
+mean_act5
+median_act5
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+1.Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r, echo=TRUE, cache=TRUE}
+act6<-act4 %>%
+  mutate(day=weekdays(date)) 
+
+act6$weekdayend[act6$day=="Saturday"|act6$day=="Sunday"]<-"Weekend" 
+act6$weekdayend[is.na(act6$weekdayend)==T]<-"Weekday" 
+act6$weekdayend<-factor(act6$weekdayend)
+```
+
+2.Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+```{r, echo=TRUE, cache=TRUE}
+require(ggplot2)
+ggplot(act6, aes(interval, steps))+
+  geom_line()+
+  facet_wrap(~weekdayend, nrow=2)+
+  facet_wrap(~weekdayend, ncol=1)+
+  xlab("Interval")+
+  ylab("Number of steps")
+  
+
+```
